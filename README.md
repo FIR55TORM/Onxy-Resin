@@ -20,5 +20,5 @@ Lot's of teething issues but:
 # What's next?
 As I've mentioned above, it needs a little more processing power which means later we will have to move onto a more powerful microcontroller however, it's currently great for switching on/off the printer & heater and getting some temperature data.
 
-# Looking for something better instead of a pet project?
+## Looking for something better instead of a pet project?
 You should probably look at [Mariner 3D](https://github.com/luizribeiro/mariner)

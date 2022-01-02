@@ -30,16 +30,15 @@ String readString;
 
 bool hasPrinterStopped = false;
 bool hasShutDownStarted = false;
-bool isHeaterThermallyRunaway = false;
 bool isPrinterOn = false;
 bool isHeaterOn = false;
-bool isPhotoInterrupterClosed = false;
+//bool isPhotoInterrupterClosed = false;
 bool isLCDMessagesPaused = false;
 bool isResettingSystem = false;
 
 int nextLcdMessage = 0;
 
-const int photoInterrupterPin = 3; // define the port of light blocking module
+//const int photoInterrupterPin = 3; // define the port of light blocking module //Unused but retained for reference
 const int heaterPowerRelayPin = 6;
 const int printerPowerRelayPin = 5;
 
@@ -81,11 +80,11 @@ void setup()
     debugLn("SUCCESS - Found index.htm file.");
   }
 
-  pinMode(photoInterrupterPin, INPUT); // define light blocking module as a output port
+  //pinMode(photoInterrupterPin, INPUT); // define light blocking module as a output port //Unused but retained for reference
   pinMode(heaterPowerRelayPin, OUTPUT);
   pinMode(printerPowerRelayPin, OUTPUT);
 
-  digitalWrite(photoInterrupterPin, LOW);
+  //digitalWrite(photoInterrupterPin, LOW); //Unused but retained for reference
   digitalWrite(heaterPowerRelayPin, HIGH);
   digitalWrite(printerPowerRelayPin, HIGH);
 }
@@ -205,9 +204,6 @@ void loop()
     resetSystem();
   }
 
-  checkHeaterThermals();
-  checkPrintStopped();
-
   if (!isLCDMessagesPaused)
   {
     switch (nextLcdMessage)
@@ -219,10 +215,6 @@ void loop()
     case 1:
       timer.in(2000, displayPrinterAndHeaterStatus);
       break;
-
-    case 2:
-      timer.in(2000, displayPrintStatus);
-      break;
     }
   }
 }
@@ -233,12 +225,9 @@ void getSystemStatus()
   StaticJsonDocument<capacity> doc;
 
   doc["temperature"]["ambient"] = round(MLX90614.GetAmbientTemp_Celsius());
-  doc["temperature"]["heater"] = round(MLX90614.GetObjectTemp_Celsius());
-  doc["temperature"]["thermalRunaway"] = isHeaterThermallyRunaway;
+  doc["temperature"]["resin"] = round(MLX90614.GetObjectTemp_Celsius());
   doc["isHeaterOn"] = isHeaterOn;
-  doc["isPrinterOn"] = isPrinterOn;
-  doc["hasPrintEnded"] = isPhotoInterrupterClosed;
-  
+  doc["isPrinterOn"] = isPrinterOn;  
 
   int length = measureJsonPretty(doc);
 
@@ -260,12 +249,15 @@ bool displayTemperatures(void *argument)
   lcd.print(round(MLX90614.GetAmbientTemp_Celsius()));
   lcd.print(char(223)); // ascii degree symbol
   lcd.print("C");
+
   lcd.setCursor(0, 1);
-  lcd.print("Heater:     ");
+  lcd.print("Resin:      ");
   lcd.print(round(MLX90614.GetObjectTemp_Celsius()));
   lcd.print(char(223)); // ascii degree symbol
   lcd.print("C");
+
   nextLcdMessage = 1;
+
   return false;
 }
 
@@ -293,37 +285,6 @@ bool displayPrinterAndHeaterStatus(void *argument)
     lcd.print("Off");
   }
 
-  nextLcdMessage = 2;
-  return false;
-}
-
-bool displayPrintStatus(void *argument)
-{
-  lcd.clear();
-  lcd.setCursor(0, 0);
-  lcd.print("Temp Runaway ");
-
-  if (!isHeaterThermallyRunaway)
-  {
-    lcd.print("No");
-  }
-  else
-  {
-    lcd.print("Yes");
-  }
-
-  lcd.setCursor(0, 1);
-  lcd.print("Print Ended ");
-
-  if (!isPhotoInterrupterClosed)
-  {
-    lcd.print("No");
-  }
-  else
-  {
-    lcd.print("Yes");
-  }
-
   nextLcdMessage = 0;
   return false;
 }
@@ -340,7 +301,7 @@ void powerOffHeater()
 
 void powerOnHeater()
 {
-  if (isPrinterOn && !isHeaterThermallyRunaway && !isHeaterOn)
+  if (isPrinterOn && !isHeaterOn)
   {
     digitalWrite(heaterPowerRelayPin, LOW);
     isHeaterOn = true;
@@ -367,40 +328,6 @@ void powerOnPrinter()
   debugLn("PRINTER: On");
 }
 
-void checkHeaterThermals()
-{
-  if (isPrinterOn)
-  {
-    double temp = MLX90614.GetObjectTemp_Celsius();
-
-    if (temp > 50.00)
-    {
-      isHeaterThermallyRunaway = true;
-      powerOffHeater();
-    }
-  }
-  else
-  {
-    // make sure heater is off when printer is off
-    powerOffHeater();
-  }
-}
-
-void checkPrintStopped()
-{
-  int photoInterrupterValue = digitalRead(photoInterrupterPin); // read the value of the digital interface 3 assigned to val
-
-  if (photoInterrupterValue == HIGH && !hasShutDownStarted && isPrinterOn) // when the light blocking sensor have signal, switch off power;
-  {
-    // isLCDMessagesPaused = true;
-    timer.cancel();
-    isPhotoInterrupterClosed = true;
-    debugLn("PRINTER: Shut Down Started");
-    timer.in(5000, powerOffPrinterByPhotoInterrupter); // power down in 5 seconds
-    hasShutDownStarted = true;
-  }
-}
-
 bool powerOffPrinterByPhotoInterrupter(void *argument)
 {
   if (!hasPrinterStopped)
@@ -411,19 +338,13 @@ bool powerOffPrinterByPhotoInterrupter(void *argument)
     hasPrinterStopped = true;
     return false; // stop timer;
   }
-
-  // return true;
 }
 
 void softResetSystem()
 {
   if (!isPrinterOn)
   {
-    // digitalWrite(photoInterrupterPin, LOW); //reset photointerrupter
-
     // reset flags
-    // isPhotoInterrupterClosed = false;
     hasShutDownStarted = false;
-    // isLCDMessagesPaused = false;
   }
 }

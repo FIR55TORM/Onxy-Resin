@@ -22,7 +22,7 @@ $(function () {
         $.getJSON("//192.168.1.112/GetStatus", function (data) {
             systemStatus = data;
             $("#ambient-temp").html(data.temperature.ambient);
-            $("#heater-temp").html(data.temperature.heater);
+            $("#resin-temp").html(data.temperature.resin);
 
             self.$flexSwitchCheckHeater.prop('checked', data.isHeaterOn);
             self.$flexSwitchCheckPrinter.prop('checked', data.isPrinterOn);
@@ -34,10 +34,6 @@ $(function () {
                 self.isPolling = true;
                 self.startPolling();
             }
-
-            // if(/*!data.isPrinterOn &&*/ self.isPolling){
-            //     self.cancelPolling();
-            // }
 
             if (!data.isPrinterOn && self.pollingCount > self.pollingLimit) {
                 self.resetSystem();
